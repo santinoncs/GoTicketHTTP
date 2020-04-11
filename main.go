@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	app "github.com/santinoncs/GoTicketHTTP/app"
-	//"sync"
+	"sync"
 	"encoding/json"
 	"net/http"
 )
@@ -21,6 +21,7 @@ type IncomingQuestion struct {
 func main() {
 
 	st := app.NewStatus()
+	var mutex = &sync.Mutex{}
 
 	var jobQueue = []chan app.Job {
 		make(chan app.Job, 100),
@@ -32,7 +33,7 @@ func main() {
 
 	//http.HandleFunc("/", handler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		handler(w, r, jobQueue, st)
+		handler(w, r, jobQueue, st,mutex)
 	})
 	err := http.ListenAndServe(":8080", nil)
 
@@ -41,7 +42,7 @@ func main() {
 }
 
 
-func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st *app.Status) {
+func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st *app.Status,mutex *sync.Mutex) {
 
 	
 	var response app.Response
@@ -62,7 +63,7 @@ func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st 
 				return
 		}
 		
-		response = app.Post(content.Priority, content.Question,jobQueue,st)
+		response = app.Post(content.Priority, content.Question,jobQueue,st,mutex)
 		responseHTTP = app.Response{Success: response.Success, Message: response.Message}
 		responseJSON, _ := json.Marshal(responseHTTP)
 		fmt.Fprintf(w, "Response: %s\n", responseJSON)

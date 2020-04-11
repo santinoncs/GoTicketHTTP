@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 	"time"
-	//"sync"
+	"sync"
 )
 
 
@@ -103,11 +103,11 @@ func newJob(priority int, question string) Job {
 }
 
 // Post : escribo los jobs en jobs channel ya con los datos de prio y message
-func Post(priority int, question string, jobQueue []chan Job,st *Status) (Response) {
+func Post(priority int, question string, jobQueue []chan Job,st *Status,mutex *sync.Mutex) (Response) {
 
 	start := time.Now()
 
-	fmt.Println("Entering Post...")
+	// fmt.Println("Entering Post...")
 
 	j := newJob(priority, question)
 
@@ -132,10 +132,10 @@ func Post(priority int, question string, jobQueue []chan Job,st *Status) (Respon
 	case Response := <-channelListenR:
 		t := time.Now()
 		elapsed := t.Sub(start)
-		//mutex.Lock()
+		mutex.Lock()
 		st.TimeProcessed += elapsed
 		st.Processed ++
-		//mutex.Unlock()
+		mutex.Unlock()
 		return Response
 	case <-time.After(3 * time.Second):
 		fmt.Println("timeout 2")
@@ -154,6 +154,12 @@ func (st *Status ) GetWorkers() int{
 }
 
 func (st *Status ) GetAverage() int64{
+	var microsperprocess int64
 	micros := int64(st.TimeProcessed / time.Microsecond)
-	return micros
+	if st.Processed > 0 {
+		microsperprocess = micros / int64(st.Processed)
+	} else {
+		microsperprocess = 0
+	}
+	return microsperprocess
 }
