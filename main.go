@@ -8,10 +8,7 @@ import (
 	"net/http"
 )
 
-type Response struct {
-	Status bool `json:"status"`
-	Body   string `json:"body"`
-}
+
 
 // IncomingQuestion : here you tell us what IncomingQuestion is
 type IncomingQuestion struct {
@@ -20,22 +17,22 @@ type IncomingQuestion struct {
 }
 
 
+
 func main() {
 
-
-	//jobQueue := make(chan app.Job, 100)
+	st := app.NewStatus()
 
 	var jobQueue = []chan app.Job {
-		make(chan app.Job),
-		make(chan app.Job),
+		make(chan app.Job, 100),
+		make(chan app.Job, 100),
 	 }
 
-	app.Start(jobQueue)
+	app.Start(jobQueue,st)
 	
 
 	//http.HandleFunc("/", handler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		handler(w, r, jobQueue)
+		handler(w, r, jobQueue, st)
 	})
 	err := http.ListenAndServe(":8080", nil)
 
@@ -43,15 +40,17 @@ func main() {
 
 }
 
-// func response(status string, body string) {
 
-// }
-
-func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job) {
+func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st *app.Status) {
 
 	
 	var response app.Response
+	var responseHTTP app.Response
+	var responseHttpStatus app.Status
 	var content IncomingQuestion
+
+	
+	// var mutex = &sync.Mutex{}
 	
 	if r.URL.Path == "/api/post" {
 		
@@ -63,18 +62,28 @@ func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job) {
 				return
 		}
 		
-		response = app.Post(content.Priority, content.Question,jobQueue)
+		response = app.Post(content.Priority, content.Question,jobQueue,st)
+		responseHTTP = app.Response{Success: response.Success, Message: response.Message}
+		responseJSON, _ := json.Marshal(responseHTTP)
+		fmt.Fprintf(w, "Response: %s\n", responseJSON)
+
+	}
+
+	if r.URL.Path == "/api/status" {
+		
+
+		NumberOfWorkers      := st.GetWorkers()
+		NumberOfProcesses    := st.GetProcessed()
+		AverageResponseTime  := st.GetAverage()
+
+		responseHttpStatus = app.Status{Workers: NumberOfWorkers, Processed: NumberOfProcesses, AverageResponseTime: AverageResponseTime}
+		responseJSON, _ := json.Marshal(responseHttpStatus)
+		fmt.Fprintf(w, "Response: %s\n", responseJSON)
 
 	}
 	
 
-	fmt.Println("message respond is:", response.Message)
-	//fmt.Println("Processed questions are:", st.GetProcessed())
-	//fmt.Println("average_response_time in µs:", st.GetAverage())
-
-	// }
-
-	responseHTTP := Response{Status: response.Success, Body: response.Message}
-	responseJSON, _ := json.Marshal(responseHTTP)
-	fmt.Fprintf(w, "Response: %s\n", responseJSON)
+	
+	
+	
 }
