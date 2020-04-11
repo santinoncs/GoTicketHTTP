@@ -15,8 +15,8 @@ type Response struct {
 
 // IncomingQuestion : here you tell us what IncomingQuestion is
 type IncomingQuestion struct {
-	Priority int
-	Question string
+	Priority   int         `json:"priority"`
+	Question   string      `json:"question"`
 }
 
 
@@ -41,25 +41,30 @@ func main() {
 
 	fmt.Println(err)
 
-
-	//response,st := app.Post(1, "hola",mutex, st)
-
-
-
 }
 
-func response(status string, body string) {
+// func response(status string, body string) {
 
-}
+// }
 
 func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job) {
 
 	
 	var response app.Response
+	var content IncomingQuestion
 	
 	if r.URL.Path == "/api/post" {
-		fmt.Println("Calling post")
-		response = app.Post(1, "hola",jobQueue)
+		
+		
+		err := json.NewDecoder(r.Body).Decode(&content)
+		if err != nil {
+				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+				w.WriteHeader(http.StatusBadRequest)
+				return
+		}
+		
+		response = app.Post(content.Priority, content.Question,jobQueue)
+
 	}
 	
 
