@@ -145,14 +145,17 @@ func Post(priority int, question string, jobQueue []chan Job,st *Status,mutex *s
 
 }
 
+// GetProcessed : method GetProcessed
 func (st *Status ) GetProcessed() int{
 	 return st.Processed
 }
 
+// GetWorkers : method GetWorkers
 func (st *Status ) GetWorkers() int{
 	 return st.Workers
 }
 
+// GetAverage : method GetAverage
 func (st *Status ) GetAverage() int64{
 	var microsperprocess int64
 	micros := int64(st.TimeProcessed / time.Microsecond)

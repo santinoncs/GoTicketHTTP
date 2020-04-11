@@ -8,15 +8,11 @@ import (
 	"net/http"
 )
 
-
-
 // IncomingQuestion : here you tell us what IncomingQuestion is
 type IncomingQuestion struct {
 	Priority   int         `json:"priority"`
 	Question   string      `json:"question"`
 }
-
-
 
 func main() {
 
@@ -30,8 +26,6 @@ func main() {
 
 	app.Start(jobQueue,st)
 	
-
-	//http.HandleFunc("/", handler)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		handler(w, r, jobQueue, st,mutex)
 	})
@@ -47,11 +41,9 @@ func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st 
 	
 	var response app.Response
 	var responseHTTP app.Response
-	var responseHttpStatus app.Status
+	var responseHTTPStatus app.Status
 	var content IncomingQuestion
 
-	
-	// var mutex = &sync.Mutex{}
 	
 	if r.URL.Path == "/api/post" {
 		
@@ -77,14 +69,11 @@ func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st 
 		NumberOfProcesses    := st.GetProcessed()
 		AverageResponseTime  := st.GetAverage()
 
-		responseHttpStatus = app.Status{Workers: NumberOfWorkers, Processed: NumberOfProcesses, AverageResponseTime: AverageResponseTime}
-		responseJSON, _ := json.Marshal(responseHttpStatus)
+		responseHTTPStatus = app.Status{Workers: NumberOfWorkers, Processed: NumberOfProcesses, AverageResponseTime: AverageResponseTime}
+		responseJSON, _ := json.Marshal(responseHTTPStatus)
 		fmt.Fprintf(w, "Response: %s\n", responseJSON)
 
 	}
-	
 
-	
-	
 	
 }
