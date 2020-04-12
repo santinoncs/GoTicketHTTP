@@ -6,6 +6,7 @@ import (
 	"sync"
 	"encoding/json"
 	"net/http"
+	_ "log"
 )
 
 // IncomingQuestion : here you tell us what IncomingQuestion is
@@ -38,11 +39,23 @@ func main() {
 
 func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st *app.Status,mutex *sync.Mutex) {
 
+	var value string
+	var status bool
 	
 	var response app.Response
 	var responseHTTP app.Response
 	var responseHTTPStatus app.Status
 	var content IncomingQuestion
+
+	if r.URL.Path == "/api" {
+
+		value = "The valid methods are: /api/post /api/status"
+		status = true
+		response := app.Response{Success: status, Message: value}
+		responseJSON, _ := json.Marshal(response)
+		fmt.Fprintf(w, "Response: %s\n", responseJSON)
+	
+	}	
 
 	
 	if r.URL.Path == "/api/post" {
@@ -64,7 +77,6 @@ func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st 
 
 	if r.URL.Path == "/api/status" {
 		
-
 		NumberOfWorkers      := st.GetWorkers()
 		NumberOfProcesses    := st.GetProcessed()
 		AverageResponseTime  := st.GetAverage()

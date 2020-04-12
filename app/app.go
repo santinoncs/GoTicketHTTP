@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 	"sync"
+	_ "errors"
 )
 
 
@@ -44,8 +45,6 @@ func newResponse(success bool, message string) *Response {
 
 // Start : starting workers
 func Start(jobQueue []chan Job,st *Status) {
-
-	fmt.Println("Starting the workers")
 
 	numWorkers := 2
 
@@ -107,8 +106,6 @@ func Post(priority int, question string, jobQueue []chan Job,st *Status,mutex *s
 
 	start := time.Now()
 
-	// fmt.Println("Entering Post...")
-
 	j := newJob(priority, question)
 
 
@@ -120,7 +117,6 @@ func Post(priority int, question string, jobQueue []chan Job,st *Status,mutex *s
 			jobQueue[0] <- j
 		}
 		if priority == 2 {
-			fmt.Println("sending to jobqueue2")
 			jobQueue[1] <- j
 		}
 
