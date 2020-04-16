@@ -15,7 +15,7 @@ type IncomingQuestion struct {
 	Question   string      `json:"question"`
 }
 
-var application app.App
+var application *app.App
 
 func main() {
 
@@ -23,7 +23,7 @@ func main() {
 	//var mutex = &sync.Mutex{}
 
 
-	application := app.NewApp(2)
+	application = app.NewApp(2)
 
 	application.Start()
 	
