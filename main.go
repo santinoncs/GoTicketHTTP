@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	app "github.com/santinoncs/GoTicketHTTP/app"
-	"sync"
+	//"sync"
 	"encoding/json"
 	"net/http"
 	_ "log"
@@ -15,20 +15,20 @@ type IncomingQuestion struct {
 	Question   string      `json:"question"`
 }
 
+var application app.App
+
 func main() {
 
-	st := app.NewStatus()
-	var mutex = &sync.Mutex{}
+	//st := app.NewStatus()
+	//var mutex = &sync.Mutex{}
 
-	var jobQueue = []chan app.Job {
-		make(chan app.Job, 100),
-		make(chan app.Job, 100),
-	 }
 
-	app.Start(jobQueue,st)
+	application := app.NewApp(2)
+
+	application.Start()
 	
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		handler(w, r, jobQueue, st,mutex)
+		handler(w, r)
 	})
 	err := http.ListenAndServe(":8080", nil)
 
@@ -37,7 +37,7 @@ func main() {
 }
 
 
-func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st *app.Status,mutex *sync.Mutex) {
+func handler(w http.ResponseWriter, r *http.Request) {
 
 	var value string
 	var status bool
@@ -68,7 +68,7 @@ func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st 
 				return
 		}
 		
-		response = app.Post(content.Priority, content.Question,jobQueue,st,mutex)
+		response = application.Post(content.Priority, content.Question)
 		responseHTTP = app.Response{Success: response.Success, Message: response.Message}
 		responseJSON, _ := json.Marshal(responseHTTP)
 		fmt.Fprintf(w, "Response: %s\n", responseJSON)
@@ -77,11 +77,7 @@ func handler(w http.ResponseWriter, r *http.Request,jobQueue []chan app.Job, st 
 
 	if r.URL.Path == "/api/status" {
 		
-		NumberOfWorkers      := st.GetWorkers()
-		NumberOfProcesses    := st.GetProcessed()
-		AverageResponseTime  := st.GetAverage()
-
-		responseHTTPStatus = app.Status{Workers: NumberOfWorkers, Processed: NumberOfProcesses, AverageResponseTime: AverageResponseTime}
+		responseHTTPStatus = application.Status.GetStatus()
 		responseJSON, _ := json.Marshal(responseHTTPStatus)
 		fmt.Fprintf(w, "Response: %s\n", responseJSON)
 

@@ -4,10 +4,16 @@ import (
 	"fmt"
 	"time"
 	"sync"
-	_ "errors"
 )
 
 
+// App : here you tell us what App is
+type App struct {
+	Status 
+	jobQueue []chan Job
+	workers int
+	priority int
+}
 
 // Response : here you tell us what Response is
 type Response struct {
@@ -22,6 +28,7 @@ type Status struct {
 	Processed           int
 	TimeProcessed       time.Duration
 	AverageResponseTime int64
+	mutex   			sync.Mutex
 }
 
 // Job : here you tell us what Job is
@@ -36,6 +43,19 @@ func NewStatus() *Status {
 	return &Status{}
 }
 
+// NewApp : here you tell us what NewApp is
+func NewApp(workers int) *App {
+	arrQueue := make([]chan Job, 2)
+	for i := range arrQueue {
+		fmt.Println("the number is", i)
+		arrQueue[i] = make(chan Job)
+	}
+	return &App{
+		jobQueue: arrQueue,
+		workers: workers,
+	}
+}
+
 func newResponse(success bool, message string) *Response {
 	return &Response{
 		Success: success,
@@ -44,13 +64,12 @@ func newResponse(success bool, message string) *Response {
 }
 
 // Start : starting workers
-func Start(jobQueue []chan Job,st *Status) {
+func (a *App) Start() {
 
-	numWorkers := 2
 
-	for j := 1; j <= numWorkers; j++ {
-		st.Workers ++
-		go newWorker(j,jobQueue)
+	for j := 1; j <= a.workers; j++ {
+		a.Status.Workers ++
+		go newWorker(j,a.jobQueue)
 	}
 }
 
@@ -74,10 +93,14 @@ func (j Job) process() Response {
 func newWorker(j int,jobQueue []chan Job) {
 
 	fmt.Println("worker started:", j)
+	//fmt.Println("The queue 0 is:", &jobQueue[0])
+	//fmt.Printf("\nSlice: %T", jobQueue)
+	//fmt.Printf("\nPointer: %d", len(jobQueue))
 
 	for {
 		select {
 		case msg1 := <-jobQueue[0]:
+			fmt.Println("listening on :", jobQueue[0])
 			//time.Sleep(1 * time.Second)
 			msg1.ResponseChan <- msg1.process()
 			close(msg1.ResponseChan)
@@ -94,19 +117,25 @@ func newWorker(j int,jobQueue []chan Job) {
 
 func newJob(priority int, question string) Job {
 
+	fmt.Println("accessing new job")
+
 	responseChan1 := make(chan Response)
 
 	j := Job{ID: priority, Question: question, ResponseChan: responseChan1}
+
+	fmt.Println("creating job:", j)
 
 	return j
 }
 
 // Post : escribo los jobs en jobs channel ya con los datos de prio y message
-func Post(priority int, question string, jobQueue []chan Job,st *Status,mutex *sync.Mutex) (Response) {
+func (a *App) Post(priority int, question string) (Response) {
 
 	start := time.Now()
 
 	j := newJob(priority, question)
+
+	fmt.Printf("El 0: %T", a.jobQueue[0])
 
 
 	// aqui lanzo con go func el escribir en el channel de jobs
@@ -114,10 +143,10 @@ func Post(priority int, question string, jobQueue []chan Job,st *Status,mutex *s
 	go func() {
 
 		if priority == 1 {
-			jobQueue[0] <- j
+			a.jobQueue[0] <- j
 		}
 		if priority == 2 {
-			jobQueue[1] <- j
+			a.jobQueue[1] <- j
 		}
 
 	}()
@@ -128,10 +157,7 @@ func Post(priority int, question string, jobQueue []chan Job,st *Status,mutex *s
 	case Response := <-channelListenR:
 		t := time.Now()
 		elapsed := t.Sub(start)
-		mutex.Lock()
-		st.TimeProcessed += elapsed
-		st.Processed ++
-		mutex.Unlock()
+		a.Status.SetProcessed(elapsed)
 		return Response
 	case <-time.After(3 * time.Second):
 		fmt.Println("timeout 2")
@@ -141,22 +167,27 @@ func Post(priority int, question string, jobQueue []chan Job,st *Status,mutex *s
 
 }
 
-// GetProcessed : method GetProcessed
-func (st *Status ) GetProcessed() int{
-	 return st.Processed
+// SetProcessed : method SetProcessed
+func (s *Status ) SetProcessed(e time.Duration) {
+	s.mutex.Lock()
+	s.TimeProcessed += e
+	s.Processed ++
+	s.mutex.Unlock()
 }
 
-// GetWorkers : method GetWorkers
-func (st *Status ) GetWorkers() int{
-	 return st.Workers
+// GetStatus : method GetStatus
+func (s Status ) GetStatus() Status{
+	s.AverageResponseTime = s.GetAverage()
+	return s
 }
+
 
 // GetAverage : method GetAverage
-func (st *Status ) GetAverage() int64{
+func (s *Status ) GetAverage() int64{
 	var microsperprocess int64
-	micros := int64(st.TimeProcessed / time.Microsecond)
-	if st.Processed > 0 {
-		microsperprocess = micros / int64(st.Processed)
+	micros := int64(s.TimeProcessed / time.Microsecond)
+	if s.Processed > 0 {
+		microsperprocess = micros / int64(s.Processed)
 	} else {
 		microsperprocess = 0
 	}
